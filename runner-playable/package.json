@@ -1,0 +1,24 @@
+{
+  "name": "runner-playable",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview"
+},
+  "devDependencies": {
+    "typescript": "~5.9.3",
+    "vite": "^8.0.0-beta.13"
+  },
+  "overrides": {
+    "vite": "^8.0.0-beta.13"
+  },
+  "dependencies": {
+    "@pixi/assets": "^7.4.3",
+    "@pixi/sprite-animated": "^7.4.3",
+    "@pixi/text-bitmap": "^7.4.3",
+    "pixi.js": "^8.16.0"
+  }
+}
