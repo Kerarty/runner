@@ -7,6 +7,13 @@ export class Player {
   private onGround = true;
   private gravity = 2200;
   private jumpForce = -920;
+  private sprite = new Image();
+
+  constructor() {
+    // Правильный способ для Vite + TypeScript
+    const characterUrl = new URL('../assets/character_run.png', import.meta.url).href;
+    this.sprite.src = characterUrl;
+  }
 
   jump() {
     if (this.onGround) {
@@ -27,26 +34,13 @@ export class Player {
   }
 
   draw(ctx: CanvasRenderingContext2D) {
-    // девушка (зелёная кофта, как в референсе)
-    ctx.fillStyle = '#228B22';           // зелёная кофта
-    ctx.fillRect(this.x + 8, this.y + 20, 52, 60); // тело
-
-    ctx.fillStyle = '#F4A460';           // кожа
-    ctx.fillRect(this.x + 18, this.y + 8, 32, 28); // голова
-
-    ctx.fillStyle = '#8B4513';           // волосы
-    ctx.fillRect(this.x + 12, this.y + 4, 44, 22);
-
-    // пончик/хвостик
-    ctx.fillStyle = '#8B4513';
-    ctx.beginPath();
-    ctx.arc(this.x + 48, this.y + 18, 14, 0, Math.PI * 2);
-    ctx.fill();
-
-    // ноги (анимация простая)
-    ctx.fillStyle = '#4B2E1A';
-    ctx.fillRect(this.x + 18, this.y + 75, 14, 35);
-    ctx.fillRect(this.x + 38, this.y + 75, 14, 35);
+    if (this.sprite.complete && this.sprite.naturalWidth > 0) {
+      ctx.drawImage(this.sprite, this.x, this.y, this.width, this.height);
+    } else {
+      // fallback пока картинка грузится
+      ctx.fillStyle = '#228B22';
+      ctx.fillRect(this.x + 8, this.y + 20, 52, 60);
+    }
   }
 
   collidesWith(other: any): boolean {

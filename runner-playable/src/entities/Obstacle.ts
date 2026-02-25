@@ -1,45 +1,40 @@
 export class Obstacle {
   public x: number;
-  public y = 570; // Подняли чуть выше, чтобы он стоял ровно на дороге
-  public width = 70; // Размеры подгоняем под пропорции грабителя
-  public height = 110;
-  private sprite: HTMLImageElement;
+  public y = 640;               // один уровень с дорогой (как девушка и грабитель)
+  public width = 68;
+  public height = 92;
+  private sprite = new Image();
 
   constructor(x: number) {
     this.x = x;
-    this.sprite = new Image();
-    // ⚠️ Помести картинку грабителя в папку public/assets/
-    this.sprite.src = 'assets/robber.png';
+    // Загружаем konus.png
+    const konusUrl = new URL('../assets/konus.png', import.meta.url).href;
+    this.sprite.src = konusUrl;
   }
 
   update(dt: number, distance: number) {
-    // Враг бежит нам навстречу, поэтому отнимаем позицию
-    this.x -= 150 * dt; 
+    this.x -= 280 * dt;
   }
 
   draw(ctx: CanvasRenderingContext2D, distance: number) {
-    const screenX = this.x - distance + 140; 
-    
-    // Оптимизация: не рисуем, если враг за пределами экрана
-    if (screenX < -150 || screenX > 800) return;
+    const screenX = this.x - distance + 140;
+    if (screenX < -100 || screenX > 800) return;
 
     if (this.sprite.complete && this.sprite.naturalWidth > 0) {
-      // Рисуем спрайт грабителя
       ctx.drawImage(this.sprite, screenX, this.y, this.width, this.height);
     } else {
-      // Запасной вариант: рисуем "грабителя" из прямоугольников (если картинки нет)
-      ctx.fillStyle = '#333'; // Черно-белая кофта
-      ctx.fillRect(screenX + 15, this.y + 30, 40, 50);
-      ctx.fillStyle = '#fff'; // Полоски
-      ctx.fillRect(screenX + 15, this.y + 40, 40, 10);
-      ctx.fillRect(screenX + 15, this.y + 60, 40, 10);
-      
-      ctx.fillStyle = '#F4A460'; // Голова
-      ctx.fillRect(screenX + 20, this.y, 30, 30);
+      // Fallback (если картинка ещё не загрузилась)
+      ctx.fillStyle = '#FF6600';
+      ctx.beginPath();
+      ctx.moveTo(screenX + 26, this.y);
+      ctx.lineTo(screenX, this.y + 80);
+      ctx.lineTo(screenX + 52, this.y + 80);
+      ctx.closePath();
+      ctx.fill();
     }
   }
 
   isOffscreen(distance: number): boolean {
-    return this.x - distance + 140 < -150;
+    return this.x - distance + 140 < -100;
   }
 }
