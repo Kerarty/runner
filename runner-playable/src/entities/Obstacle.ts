@@ -1,13 +1,14 @@
 export class Obstacle {
   public x: number;
-  public y = 640;               // один уровень с дорогой (как девушка и грабитель)
+  // выравниваем "ноги" конуса с игроком
+  public y = 682;
   public width = 68;
   public height = 92;
+  public active = true;          // добавлено
   private sprite = new Image();
 
   constructor(x: number) {
     this.x = x;
-    // Загружаем konus.png
     const konusUrl = new URL('../assets/konus.png', import.meta.url).href;
     this.sprite.src = konusUrl;
   }

@@ -3,6 +3,7 @@ export class Coin {
   public y: number;
   public width = 52;
   public height = 52;
+  public active = true;          // добавлено
   private sprite = new Image();
 
   constructor(x: number, y: number) {

@@ -18,38 +18,54 @@ export class Game {
   private finishX = 6200;
   private confetti: any[] = [];
 
-  // Константа смещения камеры (как в draw)
   private cameraOffset = 140;
+  private overlayContainer: HTMLDivElement;
 
-  constructor(private canvas: HTMLCanvasElement) {
+  private readonly logicalWidth = 640;
+  private readonly logicalHeight = 960;
+
+  constructor(private canvas: HTMLCanvasElement, overlayContainer: HTMLDivElement) {
     this.ctx = canvas.getContext('2d')!;
     this.player = new Player();
     this.background = new Background();
     this.ui = new UIManager();
+    this.overlayContainer = overlayContainer;
 
     this.spawnInitial();
   }
 
-  private spawnInitial() {
-    this.entities = [
-      new Coin(900, 400),
-      new Obstacle(1500),
-      new Monster(2200),
-      new Coin(2800, 320),
-      new Obstacle(3500),
-      new Monster(4100),
-      new Coin(4800, 500),
-    ];
+  public resizeCanvas() {
+    const dpr = window.devicePixelRatio || 1;
+    this.canvas.width = this.canvas.clientWidth * dpr;
+    this.canvas.height = this.canvas.clientHeight * dpr;
   }
 
-  public handleInput() {
+  private spawnInitial() {
+    const initialEntities = [
+      new Coin(900, 400),
+      new Coin(1500, 450),
+      new Monster(2200),
+      new Coin(2800, 320),
+      new Coin(3500, 500),
+      new Monster(4100),
+      new Coin(4800, 500),
+      new Coin(5500, 400)
+    ];
+
+    initialEntities.forEach(e => e.active = true);
+    this.entities = initialEntities;
+  }
+
+  public handlePointerDown(canvasX: number, canvasY: number) {
+    
     if (this.gameState === 'start') {
       this.gameState = 'playing';
-      return;
+    return;
     }
 
     if (this.gameState === 'playing') {
       this.player.jump();
+      return;
     }
 
     if (this.gameState === 'win' || this.gameState === 'lose') {
@@ -77,7 +93,6 @@ export class Game {
     if (this.gameState !== 'playing') return;
 
     this.distance += 280 * dt;
-
     this.player.update(dt);
     this.background.update(this.distance);
 
@@ -91,80 +106,122 @@ export class Game {
 
       entity.update?.(dt, this.distance);
 
-      // Рассчитываем экранные координаты для столкновения
       const playerScreenX = this.player.x;
       const playerScreenY = this.player.y;
 
-      const entityScreenX = entity.x - this.distance + this.cameraOffset;
-      const entityScreenY = entity.y;
+      let entityHitboxX = entity.x;
+      let entityHitboxY = entity.y;
+      let entityHitboxW = entity.width;
+      let entityHitboxH = entity.height;
 
-      // Проверка столкновения по экранным координатам
+      if ('hitboxWidth' in entity && 'hitboxHeight' in entity) {
+        entityHitboxW = entity.hitboxWidth;
+        entityHitboxH = entity.hitboxHeight;
+        if ('hitboxOffsetX' in entity) entityHitboxX += entity.hitboxOffsetX;
+        if ('hitboxOffsetY' in entity) entityHitboxY += entity.hitboxOffsetY;
+      }
+
+      const entityScreenX = entityHitboxX - this.distance + this.cameraOffset;
+      const entityScreenY = entityHitboxY;
+
       if (
+        entity.active &&
         playerScreenX + this.player.width > entityScreenX &&
-        playerScreenX < entityScreenX + entity.width &&
+        playerScreenX < entityScreenX + entityHitboxW &&
         playerScreenY + this.player.height > entityScreenY &&
-        playerScreenY < entityScreenY + entity.height
+        playerScreenY < entityScreenY + entityHitboxH
       ) {
         if (entity instanceof Coin) {
           this.balance += 45;
           this.entities.splice(i, 1);
+          continue;
         } else if (entity instanceof Obstacle || entity instanceof Monster) {
-          this.health -= 1;
-          this.entities.splice(i, 1);
-
+          if (this.player.canTakeDamage()) {
+            this.player.takeDamage();
+            this.health -= 1;
+          }
+          entity.active = false;
           if (this.health <= 0) {
             this.gameState = 'lose';
-            return;  // Останавливаем обновление
+            return;
           }
         }
       }
     }
 
-    // Спавн новых объектов
-    if (Math.random() < 0.0001) {
+    if (Math.random() < 0.03) {
       const x = this.distance + 850;
       const rand = Math.random();
-      if (rand < 0.00015) {
-        this.entities.push(new Coin(x, 300 + Math.random() * 350));
-      } else if (rand < 0.00015) {
-        this.entities.push(new Obstacle(x));
-      } else {
-        this.entities.push(new Monster(x));
-      }
+      let newEntity;
+
+      if (rand < 0.7) newEntity = new Coin(x, 450 + Math.random() * 120);
+      else if (rand < 0.85) newEntity = new Obstacle(x);
+      else newEntity = new Monster(x);
+
+      newEntity.active = true;
+      this.entities.push(newEntity);
     }
 
-    if (this.distance > this.finishX) {
-      this.gameState = 'win';
-    }
+    if (this.distance > this.finishX) this.gameState = 'win';
   }
 
   private draw() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    this.ctx.save();
+    const scaleX = this.canvas.width / this.logicalWidth;
+    const scaleY = this.canvas.height / this.logicalHeight;
+    this.ctx.scale(scaleX, scaleY);
+
     this.background.draw(this.ctx);
     this.entities.forEach(e => e.draw(this.ctx, this.distance));
     this.player.draw(this.ctx);
-
     this.ui.draw(this.ctx, this.health, Math.floor(this.balance), this.gameState);
 
     if (this.gameState === 'start') this.drawStartScreen();
-    if (this.gameState === 'win')   this.drawWinScreen();
-    if (this.gameState === 'lose')  this.drawLoseScreen();
+    if (this.gameState === 'win') this.drawWinScreen();
+    if (this.gameState === 'lose') this.drawLoseScreen();
+
+    this.ctx.restore();
+
+    this.drawOverlay();
+  }
+
+  private drawOverlay() {
+    // ... (без изменений)
+    let overlay = this.overlayContainer.querySelector('.start-overlay') as HTMLDivElement;
+
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'start-overlay';
+      overlay.innerHTML = ``;
+      this.overlayContainer.appendChild(overlay);
+    }
+
+    overlay.style.display = this.gameState === 'start' ? 'flex' : 'none';
+    overlay.style.width = `${this.canvas.width}px`;
+    overlay.style.height = `${this.canvas.height}px`;
+    overlay.style.position = 'absolute';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.justifyContent = 'center';
+    overlay.style.alignItems = 'center';
+    overlay.style.textAlign = 'center';
+    overlay.style.pointerEvents = 'none';
   }
 
   private drawStartScreen() {
     this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 
     this.ctx.fillStyle = '#fff';
     this.ctx.font = 'bold 52px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('Tap to start', this.canvas.width / 2, 420);
-    this.ctx.fillText('earning!', this.canvas.width / 2, 480);
+    this.ctx.fillText('Tap to start', this.logicalWidth / 2, 420);
+    this.ctx.fillText('earning!', this.logicalWidth / 2, 480);
 
-    this.ctx.fillStyle = '#fff';
     this.ctx.beginPath();
-    this.ctx.arc(this.canvas.width / 2 + 80, 620, 35, 0, Math.PI * 2);
+    this.ctx.arc(this.logicalWidth / 2 + 80, 620, 35, 0, Math.PI * 2);
     this.ctx.fill();
   }
 
@@ -172,60 +229,79 @@ export class Game {
     this.drawConfetti();
 
     this.ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 
     this.ctx.fillStyle = '#FFD700';
     this.ctx.font = 'bold 56px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText('Congratulations!', this.canvas.width / 2, 220);
+    this.ctx.fillText('Congratulations!', this.logicalWidth / 2, 220);
 
     this.ctx.font = 'bold 34px Arial';
     this.ctx.fillStyle = '#fff';
-    this.ctx.fillText('Choose your reward!', this.canvas.width / 2, 270);
+    this.ctx.fillText('Choose your reward!', this.logicalWidth / 2, 270);
 
     this.ctx.fillStyle = '#fff';
-    this.ctx.fillRect(this.canvas.width / 2 - 170, 320, 340, 180);
+    this.ctx.fillRect(this.logicalWidth / 2 - 170, 320, 340, 180);
 
     this.ctx.fillStyle = '#003087';
     this.ctx.font = 'bold 42px Arial';
-    this.ctx.fillText('PayPal', this.canvas.width / 2, 390);
+    this.ctx.fillText('PayPal', this.logicalWidth / 2, 390);
 
     this.ctx.font = 'bold 58px Arial';
-    this.ctx.fillText(`$${Math.floor(this.balance)}`, this.canvas.width / 2, 455);
+    this.ctx.fillText(`$${Math.floor(this.balance)}`, this.logicalWidth / 2, 455);
 
     this.drawCTA('INSTALL AND EARN', '#FFCC00', 550);
   }
 
   private drawLoseScreen() {
-    this.ctx.fillStyle = 'rgba(0,0,0,0.85)';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = 'bold 48px Arial';
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 52px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText("You didn't make it!", this.canvas.width / 2, 320);
+    this.ctx.fillText("You didn't make it!", this.logicalWidth / 2, 235);
 
     this.ctx.font = 'bold 28px Arial';
-    this.ctx.fillText('Try again on the app!', this.canvas.width / 2, 380);
+    this.ctx.fillText('Try again on the app!', this.logicalWidth / 2, 285);
 
-    this.drawCTA('INSTALL AND EARN', '#FF4444', 520);
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.beginPath();
+    this.ctx.roundRect(this.logicalWidth / 2 - 175, 325, 350, 205, 26);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = '#003087';
+    this.ctx.font = 'bold 46px Arial';
+    this.ctx.fillText('PayPal', this.logicalWidth / 2, 395);
+
+    this.ctx.font = 'bold 66px Arial';
+    this.ctx.fillText(`$${Math.floor(this.balance)}`, this.logicalWidth / 2, 470);
+
+    this.drawCTA('INSTALL AND EARN', '#FF4444', 565);
   }
 
   private drawCTA(text: string, color: string, y: number) {
+    const btnWidth = 340;
+    const btnHeight = 78;
+    const x = this.logicalWidth / 2 - btnWidth / 2;
+
     this.ctx.fillStyle = color;
-    this.ctx.fillRect(this.canvas.width / 2 - 180, y, 360, 90);
-    this.ctx.fillStyle = '#000';
-    this.ctx.font = 'bold 36px Arial';
+    this.ctx.beginPath();
+    this.ctx.roundRect(x, y, btnWidth, btnHeight, 40);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.font = 'bold 32px Arial';
     this.ctx.textAlign = 'center';
-    this.ctx.fillText(text, this.canvas.width / 2, y + 58);
+    this.ctx.fillText(text, this.logicalWidth / 2, y + 52);
   }
 
   private drawConfetti() {
     if (this.confetti.length === 0) {
       for (let i = 0; i < 120; i++) {
         this.confetti.push({
-          x: Math.random() * this.canvas.width,
-          y: Math.random() * this.canvas.height - 300,
+          x: Math.random() * this.logicalWidth,
+          y: Math.random() * this.logicalHeight - 300,
           vx: Math.random() * 6 - 3,
           vy: Math.random() * 8 + 4,
           color: ['#FFCC00', '#00A0FF', '#FF4444', '#00FF88'][Math.floor(Math.random() * 4)],
@@ -240,7 +316,7 @@ export class Game {
       c.vy += 0.3;
       this.ctx.fillStyle = c.color;
       this.ctx.fillRect(c.x, c.y, c.size, c.size * 0.6);
-      if (c.y > this.canvas.height) this.confetti.splice(i, 1);
+      if (c.y > this.logicalHeight) this.confetti.splice(i, 1);
     });
   }
 }
