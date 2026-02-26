@@ -26,12 +26,57 @@ export class Game {
 
   private lastDangerousDistance: number = -9999;
 
+  // ────────────────────────────── Звуки ──────────────────────────────
+  private bgMusic: HTMLAudioElement | null = null;
+  private winSound: HTMLAudioElement | null = null;
+  private loseSound: HTMLAudioElement | null = null;
+
+  // Анимация полёта монеток к Reward
+  private flyingCoins: {
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+    progress: number;
+    alpha: number;
+    rotation: number;
+  }[] = [];
+
+  private coinImage = new Image();
+
   constructor(private canvas: HTMLCanvasElement, overlayContainer: HTMLDivElement) {
     this.ctx = canvas.getContext('2d')!;
     this.player = new Player();
     this.background = new Background();
     this.ui = new UIManager();
     this.overlayContainer = overlayContainer;
+
+    this.coinImage.src = new URL('../assets/money.png', import.meta.url).href;
+
+    // Фоновая музыка
+    try {
+      this.bgMusic = new Audio(new URL('../assets/background-music.mp3', import.meta.url).href);
+      this.bgMusic.loop = true;
+      this.bgMusic.volume = 0.35;
+    } catch (e) {
+      console.warn("Не удалось загрузить background-music.mp3", e);
+    }
+
+    // Звук победы
+    try {
+      this.winSound = new Audio(new URL('../assets/win.mp3', import.meta.url).href);
+      this.winSound.volume = 0.7;
+    } catch (e) {
+      console.warn("Не удалось загрузить win.mp3", e);
+    }
+
+    // Звук поражения
+    try {
+      this.loseSound = new Audio(new URL('../assets/lose.mp3', import.meta.url).href);
+      this.loseSound.volume = 0.75;
+    } catch (e) {
+      console.warn("Не удалось загрузить lose.mp3", e);
+    }
 
     this.spawnInitial();
   }
@@ -59,12 +104,39 @@ export class Game {
     this.lastDangerousDistance = 4100;
   }
 
+  private playMusic() {
+    if (this.bgMusic) {
+      this.bgMusic.play().catch(err => console.log("Фоновая музыка не запустилась:", err.message));
+    }
+  }
+
+  private stopMusic() {
+    if (this.bgMusic) {
+      this.bgMusic.pause();
+    }
+  }
+
+  private playWinSound() {
+    if (this.winSound) {
+      this.winSound.currentTime = 0;
+      this.winSound.play().catch(err => console.log("Звук победы не запустился:", err.message));
+    }
+  }
+
+  private playLoseSound() {
+    if (this.loseSound) {
+      this.loseSound.currentTime = 0;
+      this.loseSound.play().catch(err => console.log("Звук поражения не запустился:", err.message));
+    }
+  }
+
   public handlePointerDown(canvasX: number, canvasY: number) {
     const logicalX = canvasX * (this.logicalWidth / this.canvas.clientWidth);
     const logicalY = canvasY * (this.logicalHeight / this.canvas.clientHeight);
 
     if (this.gameState === 'start') {
       this.gameState = 'playing';
+      this.playMusic();
       return;
     }
 
@@ -105,24 +177,19 @@ export class Game {
     for (let i = this.entities.length - 1; i >= 0; i--) {
       const entity = this.entities[i];
 
-      // ────────────────────────────────
-      // Единая проверка на выход за левый край
       const screenX = entity.x - this.distance + this.cameraOffset;
       const w = entity.spriteWidth ?? entity.width ?? 100;
       const h = entity.spriteHeight ?? entity.height ?? 100;
 
-      // Полностью ушёл за левый край + запас
       if (screenX + w < -150) {
         this.entities.splice(i, 1);
         continue;
       }
 
-      // Обновляем сущность, если она ещё видна или близко к экрану
       if (screenX < this.logicalWidth + 200 && screenX + w > -200) {
         entity.update?.(dt, this.distance);
       }
 
-      // Проверка коллизии
       const playerScreenX = this.player.x;
       const playerScreenY = this.player.y;
 
@@ -150,6 +217,19 @@ export class Game {
       ) {
         if (entity instanceof Coin) {
           this.balance += 45;
+
+          // Создаём анимированную монетку
+          const collectX = entity.x - this.distance + this.cameraOffset + entity.width / 2;
+          this.flyingCoins.push({
+            x: collectX,
+            y: entity.y + entity.height / 2,
+            tx: 455,          // координаты центра Reward-блока (подбери под свой UI)
+            ty: 68,
+            progress: 0,
+            alpha: 1,
+            rotation: Math.random() * Math.PI * 2
+          });
+
           this.entities.splice(i, 1);
           continue;
         } else if (entity instanceof Obstacle || entity instanceof Monster) {
@@ -160,6 +240,8 @@ export class Game {
           entity.active = false;
           if (this.health <= 0) {
             this.gameState = 'lose';
+            this.stopMusic();
+            this.playLoseSound();
             return;
           }
         }
@@ -199,6 +281,28 @@ export class Game {
 
     if (this.distance > this.finishX) {
       this.gameState = 'win';
+      this.stopMusic();
+      this.playWinSound();
+    }
+
+    // Обновление анимации полёта монеток
+    for (let j = this.flyingCoins.length - 1; j >= 0; j--) {
+      const coin = this.flyingCoins[j];
+      coin.progress += dt * 3.8; // скорость полёта — можно подкрутить
+
+      if (coin.progress >= 1) {
+        this.flyingCoins.splice(j, 1);
+        continue;
+      }
+
+      // Плавное движение + вращение
+      const t = coin.progress;
+      const ease = 1 - Math.pow(1 - t, 3); // easeOutCubic
+
+      coin.x = coin.x + (coin.tx - coin.x) * 0.18;
+      coin.y = coin.y + (coin.ty - coin.y) * 0.18;
+      coin.rotation += dt * 8; // лёгкое вращение
+      coin.alpha = Math.max(0.1, 1 - ease * 1.1);
     }
   }
 
@@ -213,6 +317,32 @@ export class Game {
     this.background.draw(this.ctx);
     this.entities.forEach(e => e.draw(this.ctx, this.distance));
     this.player.draw(this.ctx);
+
+    // Рисуем летящие монетки
+    this.flyingCoins.forEach(coin => {
+      const t = coin.progress;
+      const ease = 1 - Math.pow(1 - t, 3);
+
+      const size = 52 * (1 - ease * 0.7);
+
+      this.ctx.save();
+      this.ctx.globalAlpha = coin.alpha;
+      this.ctx.translate(coin.x, coin.y);
+      this.ctx.rotate(coin.rotation);
+      this.ctx.scale(1 - ease * 0.4, 1 - ease * 0.4);
+
+      if (this.coinImage.complete && this.coinImage.naturalWidth !== 0) {
+        this.ctx.drawImage(this.coinImage, -size / 2, -size / 2, size, size);
+      } else {
+        this.ctx.fillStyle = '#FFCC00';
+        this.ctx.beginPath();
+        this.ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+
+      this.ctx.restore();
+    });
+
     this.ui.draw(this.ctx, this.health, Math.floor(this.balance), this.gameState);
 
     if (this.gameState === 'start') {
