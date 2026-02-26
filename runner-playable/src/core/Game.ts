@@ -24,6 +24,8 @@ export class Game {
   private readonly logicalWidth = 640;
   private readonly logicalHeight = 960;
 
+  private lastDangerousDistance: number = -9999;
+
   constructor(private canvas: HTMLCanvasElement, overlayContainer: HTMLDivElement) {
     this.ctx = canvas.getContext('2d')!;
     this.player = new Player();
@@ -42,25 +44,28 @@ export class Game {
 
   private spawnInitial() {
     const initialEntities = [
-      new Coin(900, 400),
-      new Coin(1500, 450),
+      new Coin(900, 480),
+      new Coin(1500, 520),
       new Monster(2200),
-      new Coin(2800, 320),
+      new Coin(2800, 460),
       new Coin(3500, 500),
       new Monster(4100),
-      new Coin(4800, 500),
-      new Coin(5500, 400)
+      new Coin(4800, 520),
+      new Coin(5500, 480)
     ];
 
     initialEntities.forEach(e => e.active = true);
     this.entities = initialEntities;
+    this.lastDangerousDistance = 4100;
   }
 
   public handlePointerDown(canvasX: number, canvasY: number) {
-    
+    const logicalX = canvasX * (this.logicalWidth / this.canvas.clientWidth);
+    const logicalY = canvasY * (this.logicalHeight / this.canvas.clientHeight);
+
     if (this.gameState === 'start') {
       this.gameState = 'playing';
-    return;
+      return;
     }
 
     if (this.gameState === 'playing') {
@@ -96,40 +101,52 @@ export class Game {
     this.player.update(dt);
     this.background.update(this.distance);
 
+    // Обновление и удаление сущностей
     for (let i = this.entities.length - 1; i >= 0; i--) {
       const entity = this.entities[i];
 
-      if (entity.isOffscreen?.(this.distance)) {
+      // ────────────────────────────────
+      // Единая проверка на выход за левый край
+      const screenX = entity.x - this.distance + this.cameraOffset;
+      const w = entity.spriteWidth ?? entity.width ?? 100;
+      const h = entity.spriteHeight ?? entity.height ?? 100;
+
+      // Полностью ушёл за левый край + запас
+      if (screenX + w < -150) {
         this.entities.splice(i, 1);
         continue;
       }
 
-      entity.update?.(dt, this.distance);
+      // Обновляем сущность, если она ещё видна или близко к экрану
+      if (screenX < this.logicalWidth + 200 && screenX + w > -200) {
+        entity.update?.(dt, this.distance);
+      }
 
+      // Проверка коллизии
       const playerScreenX = this.player.x;
       const playerScreenY = this.player.y;
 
-      let entityHitboxX = entity.x;
-      let entityHitboxY = entity.y;
-      let entityHitboxW = entity.width;
-      let entityHitboxH = entity.height;
+      let hitX = entity.x;
+      let hitY = entity.y;
+      let hitW = entity.width;
+      let hitH = entity.height;
 
       if ('hitboxWidth' in entity && 'hitboxHeight' in entity) {
-        entityHitboxW = entity.hitboxWidth;
-        entityHitboxH = entity.hitboxHeight;
-        if ('hitboxOffsetX' in entity) entityHitboxX += entity.hitboxOffsetX;
-        if ('hitboxOffsetY' in entity) entityHitboxY += entity.hitboxOffsetY;
+        hitW = entity.hitboxWidth;
+        hitH = entity.hitboxHeight;
+        if ('hitboxOffsetX' in entity) hitX += entity.hitboxOffsetX;
+        if ('hitboxOffsetY' in entity) hitY += entity.hitboxOffsetY;
       }
 
-      const entityScreenX = entityHitboxX - this.distance + this.cameraOffset;
-      const entityScreenY = entityHitboxY;
+      const entityScreenX = hitX - this.distance + this.cameraOffset;
+      const entityScreenY = hitY;
 
       if (
         entity.active &&
         playerScreenX + this.player.width > entityScreenX &&
-        playerScreenX < entityScreenX + entityHitboxW &&
+        playerScreenX < entityScreenX + hitW &&
         playerScreenY + this.player.height > entityScreenY &&
-        playerScreenY < entityScreenY + entityHitboxH
+        playerScreenY < entityScreenY + hitH
       ) {
         if (entity instanceof Coin) {
           this.balance += 45;
@@ -149,20 +166,40 @@ export class Game {
       }
     }
 
-    if (Math.random() < 0.03) {
-      const x = this.distance + 850;
-      const rand = Math.random();
-      let newEntity;
-
-      if (rand < 0.7) newEntity = new Coin(x, 450 + Math.random() * 120);
-      else if (rand < 0.85) newEntity = new Obstacle(x);
-      else newEntity = new Monster(x);
-
-      newEntity.active = true;
-      this.entities.push(newEntity);
+    // Спавн монеток
+    if (Math.random() < 0.028) {
+      const x = this.distance + 750 + Math.random() * 250;
+      const y = 440 + Math.random() * 140;
+      const coin = new Coin(x, y);
+      coin.active = true;
+      this.entities.push(coin);
     }
 
-    if (this.distance > this.finishX) this.gameState = 'win';
+    // Спавн опасностей
+    const minGap = 350;
+    if (
+      Math.random() < 0.032 &&
+      this.distance - this.lastDangerousDistance > minGap &&
+      this.entities.length < 35
+    ) {
+      const x = this.distance + 850;
+      const rand = Math.random();
+      let dangerous;
+
+      if (rand < 0.65) {
+        dangerous = new Obstacle(x);
+      } else {
+        dangerous = new Monster(x);
+      }
+
+      dangerous.active = true;
+      this.entities.push(dangerous);
+      this.lastDangerousDistance = this.distance;
+    }
+
+    if (this.distance > this.finishX) {
+      this.gameState = 'win';
+    }
   }
 
   private draw() {
@@ -178,56 +215,31 @@ export class Game {
     this.player.draw(this.ctx);
     this.ui.draw(this.ctx, this.health, Math.floor(this.balance), this.gameState);
 
-    if (this.gameState === 'start') this.drawStartScreen();
+    if (this.gameState === 'start') {
+      this.ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
+
+      this.ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      this.ctx.font = 'bold 52px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('Tap anywhere', this.logicalWidth / 2, this.logicalHeight / 2 - 40);
+      this.ctx.fillText('to start earning!', this.logicalWidth / 2, this.logicalHeight / 2 + 30);
+    }
+
     if (this.gameState === 'win') this.drawWinScreen();
     if (this.gameState === 'lose') this.drawLoseScreen();
 
     this.ctx.restore();
 
-    this.drawOverlay();
-  }
-
-  private drawOverlay() {
-    // ... (без изменений)
-    let overlay = this.overlayContainer.querySelector('.start-overlay') as HTMLDivElement;
-
-    if (!overlay) {
-      overlay = document.createElement('div');
-      overlay.className = 'start-overlay';
-      overlay.innerHTML = ``;
-      this.overlayContainer.appendChild(overlay);
+    if (this.gameState === 'win') {
+      this.ctx.save();
+      this.ctx.scale(scaleX, scaleY);
+      this.drawConfetti();
+      this.ctx.restore();
     }
-
-    overlay.style.display = this.gameState === 'start' ? 'flex' : 'none';
-    overlay.style.width = `${this.canvas.width}px`;
-    overlay.style.height = `${this.canvas.height}px`;
-    overlay.style.position = 'absolute';
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.justifyContent = 'center';
-    overlay.style.alignItems = 'center';
-    overlay.style.textAlign = 'center';
-    overlay.style.pointerEvents = 'none';
-  }
-
-  private drawStartScreen() {
-    this.ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
-
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = 'bold 52px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText('Tap to start', this.logicalWidth / 2, 420);
-    this.ctx.fillText('earning!', this.logicalWidth / 2, 480);
-
-    this.ctx.beginPath();
-    this.ctx.arc(this.logicalWidth / 2 + 80, 620, 35, 0, Math.PI * 2);
-    this.ctx.fill();
   }
 
   private drawWinScreen() {
-    this.drawConfetti();
-
     this.ctx.fillStyle = 'rgba(0,0,0,0.75)';
     this.ctx.fillRect(0, 0, this.logicalWidth, this.logicalHeight);
 

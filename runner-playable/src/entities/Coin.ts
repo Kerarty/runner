@@ -3,7 +3,7 @@ export class Coin {
   public y: number;
   public width = 52;
   public height = 52;
-  public active = true;          // добавлено
+  public active = true;
   private sprite = new Image();
 
   constructor(x: number, y: number) {
@@ -18,18 +18,15 @@ export class Coin {
 
   draw(ctx: CanvasRenderingContext2D, distance: number) {
     const screenX = this.x - distance + 140;
-    if (screenX < -100 || screenX > 800) return;
+
+    // ────────────────────────────────
+    // УДАЛЕНА проверка if (screenX < -100 || screenX > 800) return;
 
     if (this.sprite.complete && this.sprite.naturalWidth > 0) {
       ctx.drawImage(this.sprite, screenX, this.y, this.width, this.height);
     } else {
-      // fallback
       ctx.fillStyle = '#00ff88';
       ctx.fillRect(screenX, this.y, this.width, this.height);
     }
-  }
-
-  isOffscreen(distance: number): boolean {
-    return this.x - distance + 140 < -100;
   }
 }
