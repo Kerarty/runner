@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import healthPng from './assets/health.png';
 import moneyPng  from './assets/money.png';
+import paypalPng from './assets/PayPal.png';
 
 function mkText(text: string, style: Record<string, any>): PIXI.Text {
   return new PIXI.Text({ text, style });
@@ -13,32 +14,28 @@ export class UIManager {
   private heartBaseScaleX: number[]      = [];
   private heartBaseScaleY: number[]      = [];
 
-  private cardBg!:      PIXI.Graphics;
-  private balanceText!: PIXI.Text;
-  private ppLogoCard!:  PIXI.Graphics;
+  // Balance card — PayPal.png + текст поверх
+  private ppCardSprite!: PIXI.Sprite;
+  private balanceText!:  PIXI.Text;
 
-  private bottomBg!:   PIXI.Graphics;
-  private playoffTxt!: PIXI.Text;
-  private coinA!:      PIXI.Sprite;
-  private coinB!:      PIXI.Sprite;
-  private ppBoxBg!:    PIXI.Graphics;
-  private ppBoxTxt!:   PIXI.Text;
-  private dlBg!:       PIXI.Graphics;
-  private dlTxt!:      PIXI.Text;
+  // Bottom bar
+  private bottomBg!:      PIXI.Graphics;
+  private playoffTxt!:    PIXI.Text;
+  private moneyDecor!:    PIXI.Sprite;   // стопка денег рядом с "Playoff"
+  private ppDecor!:       PIXI.Sprite;   // карточка PayPal рядом с деньгами
+  private dlBg!:          PIXI.Graphics;
+  private dlTxt!:         PIXI.Text;
 
-  private hintText!:  PIXI.Text;
-  private hintTimer   = 0;
+  private hintText!: PIXI.Text;
+  private hintTimer  = 0;
 
-  // Кэш центра карточки баланса в экранных пикселях
   private _cardCX = 0;
   private _cardCY = 0;
 
   private sw = 640;
   private sh = 960;
 
-  constructor() {
-    this.container = new PIXI.Container();
-  }
+  constructor() { this.container = new PIXI.Container(); }
 
   init(): void {
     this._buildHearts();
@@ -47,11 +44,6 @@ export class UIManager {
     this._buildHint();
   }
 
-  /**
-   * Центр карточки баланса в ЭКРАННЫХ пикселях.
-   * Game.ts использует это для точного прицеливания летящих монеток
-   * при любом размере экрана — без хардкода.
-   */
   getBalanceCardCenter(): { x: number; y: number } {
     return { x: this._cardCX, y: this._cardCY };
   }
@@ -73,90 +65,113 @@ export class UIManager {
       this.heartBaseScaleY[i] = h.scale.y;
     });
 
-    // ── Balance card: top-right ───────────────────────────────────────────
-    const cardH = Math.round(sh * 0.065);
-    const cardW = Math.round(sw * 0.28);
-    const cardX = sw - cardW - PAD;
-    const cardY = PAD;
-    const cardR = cardH / 2;
+    // ── Balance card: top-right — PayPal.png ──────────────────────────────
+    const cardH  = Math.round(sh * 0.065);
+    const ppTex  = this.ppCardSprite.texture;
+    const cardW  = Math.round(cardH * ppTex.width / ppTex.height);
+    const cardX  = sw - cardW - PAD;
+    const cardY  = PAD;
 
-    // Кэшируем центр карточки — используется в getBalanceCardCenter()
-    this._cardCX = cardX + cardW * 0.62;
+    this.ppCardSprite.x      = cardX;
+    this.ppCardSprite.y      = cardY;
+    this.ppCardSprite.width  = cardW;
+    this.ppCardSprite.height = cardH;
+
+    this._cardCX = cardX + cardW * 0.81;
     this._cardCY = cardY + cardH * 0.5;
 
-    this.cardBg.clear();
-    this.cardBg
-      .fill({ color: 0xffffff, alpha: 0.96 })
-      .roundRect(cardX, cardY, cardW, cardH, cardR)
-      .fill()
-      .setStrokeStyle({ width: 1.5, color: 0x0079c1, alpha: 0.3 })
-      .roundRect(cardX, cardY, cardW, cardH, cardR)
-      .stroke();
-
-    const logoR = cardH * 0.28;
-    this.ppLogoCard.clear();
-    this.ppLogoCard
-      .fill({ color: 0x009cde }).circle(cardX + logoR + 10, cardY + cardH / 2, logoR).fill()
-      .fill({ color: 0x003087 }).circle(cardX + logoR + 15, cardY + cardH / 2 + logoR * 0.3, logoR * 0.85).fill();
-
-    this.balanceText.style.fontSize = Math.round(cardH * 0.52);
+    this.balanceText.style.fontSize = Math.round(cardH * 0.50);
     this.balanceText.anchor.set(0.5, 0.5);
     this.balanceText.x = this._cardCX;
-    this.balanceText.y = cardY + cardH * 0.58;
+    this.balanceText.y = cardY + cardH * 0.52;
 
-    // ── Bottom bar: bottom anchor ─────────────────────────────────────────
-    const barH = Math.round(sh * 0.1);
-    const barY = sh - barH;
+    // ── Bottom bar ────────────────────────────────────────────────────────
+    const barH   = Math.round(sh * 0.1);
+    const barY   = sh - barH;
+    const barR   = barH * 0.35;
+    const barPad = 6;
 
     this.bottomBg.clear();
+
+    // Основной фон
     this.bottomBg
-      .fill({ color: 0x6d28d9 }).rect(0, barY, sw, barH).fill()
-      .fill({ color: 0x4c1d95, alpha: 0.5 }).rect(0, barY + barH * 0.5, sw, barH * 0.5).fill();
+      .fill({ color: 0x7c3aed })
+      .roundRect(barPad, barY - barPad, sw - barPad * 2, barH + barPad, barR)
+      .fill();
+
+    // Затемнение нижней части
+    this.bottomBg
+      .fill({ color: 0x4c1d95, alpha: 0.55 })
+      .roundRect(barPad, barY + barH * 0.35, sw - barPad * 2, barH * 0.65, barR)
+      .fill();
+
+    // Светлая обводка
+    this.bottomBg
+      .setStrokeStyle({ width: 2, color: 0xffffff, alpha: 0.20 })
+      .roundRect(barPad, barY - barPad, sw - barPad * 2, barH + barPad, barR)
+      .stroke();
 
     const midY = barY + barH / 2;
-    const fs   = Math.round(barH * 0.42);
+    const fs   = Math.round(barH * 0.44);
 
+    // "Playoff" — жирный белый текст слева
     this.playoffTxt.style.fontSize = fs;
     this.playoffTxt.anchor.set(0, 0.5);
-    this.playoffTxt.x = PAD + 6;
+    this.playoffTxt.x = PAD + barPad + 8;
     this.playoffTxt.y = midY;
 
-    const pW = this.playoffTxt.width;
-    const cS = Math.round(barH * 0.44);
-    if (this.coinA) { this.coinA.width = this.coinA.height = cS;       this.coinA.x = PAD + 6 + pW + 4;       this.coinA.y = midY - cS * 0.6; }
-    if (this.coinB) { this.coinB.width = this.coinB.height = cS * 0.8; this.coinB.x = PAD + 6 + pW + cS + 2; this.coinB.y = midY - cS * 0.3; }
+    // Стопка денег сразу после "Playoff"
+    const pW  = this.playoffTxt.width;
+    const mH  = Math.round(barH * 0.80);  // высота картинки денег
+    const mW  = mH;                        // квадратная
+    this.moneyDecor.width  = mW;
+    this.moneyDecor.height = mH;
+    this.moneyDecor.x = PAD + barPad + 8 + pW + 2;
+    this.moneyDecor.y = midY - mH * 0.5;
 
-    const ppW = Math.round(sw * 0.22);
-    const ppH = Math.round(barH * 0.64);
-    const ppX = sw / 2 - ppW / 2;
-    const ppY = midY - ppH / 2;
-    this.ppBoxBg.clear();
-    this.ppBoxBg
-      .fill({ color: 0xffffff, alpha: 0.92 })
-      .roundRect(ppX, ppY, ppW, ppH, ppH / 2)
-      .fill();
-    this.ppBoxTxt.style.fontSize = Math.round(ppH * 0.42);
-    this.ppBoxTxt.anchor.set(0.5, 0.5);
-    this.ppBoxTxt.x = sw / 2;
-    this.ppBoxTxt.y = midY;
+    // PayPal карточка поверх / рядом с деньгами
+    const ppH = Math.round(barH * 0.55);
+    const ppDecorTex = this.ppDecor.texture;
+    const ppW = Math.round(ppH * ppDecorTex.width / ppDecorTex.height);
+    this.ppDecor.width  = ppW;
+    this.ppDecor.height = ppH;
+    this.ppDecor.x = PAD + barPad + 8 + pW + mW * 0.55; // перекрывает деньги
+    this.ppDecor.y = midY - ppH * 0.65;
 
-    const dlW = Math.round(sw * 0.28);
-    const dlH = Math.round(barH * 0.72);
-    const dlX = sw - dlW - PAD;
+    // ── DOWNLOAD button — справа ──────────────────────────────────────────
+    const dlW = Math.round(sw * 0.26);
+    const dlH = Math.round(barH * 0.70);
+    const dlX = sw - dlW - PAD - barPad;
     const dlY = midY - dlH / 2;
+
     this.dlBg.clear();
+
+    // Жёлто-оранжевый градиент через два прямоугольника
     this.dlBg
-      .fill({ color: 0xff9500 })
+      .fill({ color: 0xffa500 })
       .roundRect(dlX, dlY, dlW, dlH, dlH / 2)
       .fill();
-    this.dlTxt.style.fontSize = Math.round(dlH * 0.38);
+
+    // Светлее сверху
+    this.dlBg
+      .fill({ color: 0xffcc00, alpha: 0.5 })
+      .roundRect(dlX, dlY, dlW, dlH * 0.5, dlH / 2)
+      .fill();
+
+    // Тёмная обводка
+    this.dlBg
+      .setStrokeStyle({ width: 2, color: 0xcc6600, alpha: 0.6 })
+      .roundRect(dlX, dlY, dlW, dlH, dlH / 2)
+      .stroke();
+
+    this.dlTxt.style.fontSize = Math.round(dlH * 0.40);
     this.dlTxt.anchor.set(0.5, 0.5);
     this.dlTxt.x = dlX + dlW / 2;
     this.dlTxt.y = midY;
 
-    // ── Hint: по центру игровой зоны ─────────────────────────────────────
+    // ── Hint ──────────────────────────────────────────────────────────────
     this.hintText.x = sw / 2;
-    this.hintText.y = barY * 0.43;
+    this.hintText.y = (barY - barPad) * 0.43;
     this.hintText.style.fontSize = Math.round(Math.min(sw, sh) * 0.05);
     (this.hintText.style as any).wordWrapWidth = sw * 0.7;
   }
@@ -191,6 +206,7 @@ export class UIManager {
 
   getBarHeight(): number { return Math.round(this.sh * 0.1); }
 
+  // ── Builders ──────────────────────────────────────────────────────────────
   private _buildHearts(): void {
     const tex = PIXI.Texture.from(healthPng);
     for (let i = 0; i < 3; i++) {
@@ -204,29 +220,45 @@ export class UIManager {
   }
 
   private _buildBalanceCard(): void {
-    this.cardBg      = new PIXI.Graphics();
-    this.ppLogoCard  = new PIXI.Graphics();
+    this.ppCardSprite = new PIXI.Sprite(PIXI.Texture.from(paypalPng));
+    this.container.addChild(this.ppCardSprite);
+
     this.balanceText = mkText('$0', {
-      fontFamily: 'Arial', fontWeight: 'bold', fontSize: 26, fill: 0x003087,
+      fontFamily: 'Arial', fontWeight: 'bold', fontSize: 26, fill: 0xffffff,
+      dropShadow: true, dropShadowColor: 0x00205b, dropShadowBlur: 4, dropShadowDistance: 1,
     });
-    this.container.addChild(this.cardBg, this.ppLogoCard, this.balanceText);
+    this.container.addChild(this.balanceText);
   }
 
   private _buildBottomBar(): void {
     this.bottomBg   = new PIXI.Graphics();
-    this.playoffTxt = mkText('Playoff', { fontFamily:'Arial', fontWeight:'bold', fontSize:36, fill:0xffffff });
-    this.coinA      = new PIXI.Sprite(PIXI.Texture.from(moneyPng));
-    this.coinB      = new PIXI.Sprite(PIXI.Texture.from(moneyPng));
-    this.ppBoxBg    = new PIXI.Graphics();
-    this.ppBoxTxt   = mkText('PayPal',   { fontFamily:'Arial', fontWeight:'bold', fontSize:16, fill:0x003087 });
-    this.dlBg       = new PIXI.Graphics();
-    this.dlTxt      = mkText('DOWNLOAD', { fontFamily:'Arial', fontWeight:'bold', fontSize:18, fill:0xffffff });
+
+    // "Playoff" текст
+    this.playoffTxt = mkText('Playoff', {
+      fontFamily: 'Arial', fontWeight: 'bold', fontSize: 36, fill: 0xffffff,
+      dropShadow: true, dropShadowColor: 0x000000, dropShadowBlur: 6, dropShadowDistance: 2,
+    });
+
+    // Стопка денег (money.png)
+    this.moneyDecor = new PIXI.Sprite(PIXI.Texture.from(moneyPng));
+
+    // PayPal карточка (PayPal.png) — декоративная в баре
+    this.ppDecor = new PIXI.Sprite(PIXI.Texture.from(paypalPng));
+
+    // Кнопка DOWNLOAD
+    this.dlBg  = new PIXI.Graphics();
+    this.dlTxt = mkText('DOWNLOAD', {
+      fontFamily: 'Arial', fontWeight: 'bold', fontSize: 18, fill: 0xffffff,
+      dropShadow: true, dropShadowColor: 0x663300, dropShadowBlur: 3, dropShadowDistance: 1,
+    });
 
     this.container.addChild(
       this.bottomBg,
-      this.playoffTxt, this.coinA, this.coinB,
-      this.ppBoxBg, this.ppBoxTxt,
-      this.dlBg, this.dlTxt,
+      this.playoffTxt,
+      this.moneyDecor,
+      this.ppDecor,
+      this.dlBg,
+      this.dlTxt,
     );
   }
 
