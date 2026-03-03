@@ -1,106 +1,31 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html {
+  width: 100%;
+  height: 100%;
 }
 
-html, body {
+body {
+  width: 100%;
   height: 100%;
-  background: #0a0a0a;
   overflow: hidden;
+  background: #000;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 #app {
+  position: fixed;
+  inset: 0;
   width: 100%;
   height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.phone-wrapper {
-  position: relative;
-  width: 860px;
-  height: 860px;
-}
-
-.phone-frame {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  transform-origin: center center;
-  width: 320px;
-  height: 670px;
   overflow: hidden;
-  transition: width 0.4s ease, height 0.4s ease, border-radius 0.4s ease,
-              box-shadow 0.4s ease;
+  background: #000;
 }
 
-.phone-frame.landscape {
-  width: 670px;
-  height: 320px;
-  border-radius: 54px;
-}
-
-/* модели телефонов */
-.phone-frame.model-iphone {
-  background: #111;
-  border: 18px solid #1c1c1c;
-  border-radius: 70px;
-  box-shadow: 0 50px 130px rgba(0,0,0,0.97),
-              inset 0 0 30px rgba(255,255,255,0.06);
-}
-
-.phone-frame.model-android {
-  background: radial-gradient(circle at top left, #333 0, #111 45%, #000 100%);
-  border: 14px solid #2a2a2a;
-  border-radius: 46px;
-  box-shadow: 0 40px 90px rgba(0,0,0,0.9);
-}
-
-.phone-frame.model-compact {
-  width: 280px;
-  height: 560px;
-  background: #101010;
-  border: 16px solid #262626;
-  border-radius: 60px;
-  box-shadow: 0 45px 110px rgba(0,0,0,0.95);
-}
-
-.phone-frame.model-compact.landscape {
-  border-radius: 50px;
-}
-
-/* ← ИЗМЕНЕНИЕ ЗДЕСЬ */
-#game {
+canvas {
   display: block;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 auto;
+  touch-action: none;
+  /* Let PIXI control canvas size via autoDensity — don't override with CSS */
 }
-
-.overlay-container {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* панель управления */
-#orientation, #phone-model {
-  position: fixed;
-  bottom: 55px;
-  background: #222;
-  color: white;
-  border: 1px solid #555;
-  border-radius: 14px;
-  padding: 12px 34px;
-  font-size: 17px;
-  cursor: pointer;
-  box-shadow: 0 10px 35px rgba(0,0,0,0.8);
-  z-index: 100000;
-}
-
-#orientation { left: 28%; transform: translateX(-50%); }
-#phone-model { right: 28%; transform: translateX(50%); }
