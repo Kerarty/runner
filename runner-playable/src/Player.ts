@@ -1,143 +1,245 @@
 import * as PIXI from 'pixi.js';
-import characterPng from './assets/character_run3.png';
+import characterPng from './assets/Character1.png';
+
+interface FrameData {
+  frame: { x: number; y: number; w: number; h: number };
+  rotated: boolean; trimmed: boolean;
+  spriteSourceSize: { x: number; y: number; w: number; h: number };
+  sourceSize: { w: number; h: number };
+  anchor?: { x: number; y: number };
+}
+interface AtlasData {
+  frames: Record<string, FrameData>;
+  animations: Record<string, string[]>;
+  meta: Record<string, any>;
+}
+
+const atlas: AtlasData = {
+  frames: {
+    "character/15-0":{ frame:{x:782,y:758, w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-1":{ frame:{x:2,  y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-2":{ frame:{x:132,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-3":{ frame:{x:262,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-4":{ frame:{x:392,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-5":{ frame:{x:522,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-6":{ frame:{x:652,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/15-7":{ frame:{x:782,y:1015,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/16-0":{ frame:{x:2,  y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-1":{ frame:{x:132,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-2":{ frame:{x:262,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-3":{ frame:{x:392,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-4":{ frame:{x:522,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-5":{ frame:{x:652,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-6":{ frame:{x:782,y:502, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-7":{ frame:{x:2,  y:758, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-8":{ frame:{x:132,y:758, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/16-9":{ frame:{x:262,y:758, w:130,h:256}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:256},sourceSize:{w:130,h:256} },
+    "character/17-0":{ frame:{x:2,  y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/17-1":{ frame:{x:132,y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/17-2":{ frame:{x:262,y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/17-3":{ frame:{x:392,y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/17-4":{ frame:{x:522,y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+    "character/17-5":{ frame:{x:652,y:1272,w:130,h:257}, rotated:false,trimmed:false,spriteSourceSize:{x:0,y:0,w:130,h:257},sourceSize:{w:130,h:257} },
+  },
+  animations: {
+    "character/15": ["character/15-0","character/15-1","character/15-2","character/15-3","character/15-4","character/15-5","character/15-6","character/15-7"],
+    "character/16": ["character/16-0","character/16-1","character/16-2","character/16-3","character/16-4","character/16-5","character/16-6","character/16-7","character/16-8","character/16-9"],
+    "character/17": ["character/17-0","character/17-1","character/17-2","character/17-3","character/17-4","character/17-5"],
+  },
+  meta: { app:"", version:"1.1", image:"Character1.png", format:"RGBA8888", size:{w:914,h:1532}, scale:"1" }
+};
+
+// character/15 = idle, character/16 = run, character/17 = jump/fall
+const ANIM_IDLE = 'character/15';
+const ANIM_RUN  = 'character/16';
+const ANIM_JUMP = 'character/17';
+
+// Скорости анимаций в кадрах в секунду
+const FPS_IDLE = 7;
+const FPS_RUN  = 14;
+const FPS_JUMP = 10;
 
 export class Player {
-  public readonly container: PIXI.Container;
-  private sprite!: PIXI.AnimatedSprite;
+  public readonly container: PIXI.Container = new PIXI.Container();
 
-  public readonly x     = 140;
-  public y              = 620;
+  public x: number = 140;
+  public y: number = 620;
 
-  private readonly _baseW = 68;
-  private readonly _baseH = 110;
-  private readonly _scale = 1.4;
-  public  readonly width:  number;
-  public  readonly height: number;
+  public readonly width:  number = 130;
+  public readonly height: number = 256;
 
-  private baseSX = 1;
-  private baseSY = 1;
+  // Вместо AnimatedSprite используем обычный Sprite + ручная прокрутка кадров
+  private sprite!:  PIXI.Sprite;
+  private textures: PIXI.Texture[] = [];   // текущий набор кадров
+  private frameTime    = 0;   // накопленное время
+  private frameDur     = 1 / FPS_IDLE; // длительность одного кадра в секундах
+  private frameIndex   = 0;
+  private frameLooping = true;
+  private framePlaying = true;
 
-  private vy                 = 0;
-  private onGround           = true;
-  private jumpLocked         = true;
-  private readonly gravity   = 2200;
-  private readonly jumpForce = -1050;
-  private readonly groundY   = 620;
+  private currentState: 'idle' | 'run' | 'jump' | 'fall' = 'idle';
 
-  // Беговая анимация управляется через AnimatedSprite,
-  // поэтому runTime нужен только для bounce/tilt
-  private runTime           = 0;
-  private readonly runAmp   = 6;
-  private readonly runSpd   = 14;
+  private allAnims: Record<string, PIXI.Texture[]> = {};
 
-  private invuln            = false;
-  private invulnTimer        = 0;
-  private readonly invulnDur = 1;
+  private vy         = 0;
+  private onGround   = true;
+  private jumpLocked = true;
 
-  // Параметры спрайтшита character_run2.png
-  private static readonly FRAME_COUNT = 2;
-  private static readonly FRAME_W     = 336;
-  private static readonly FRAME_H     = 478;
+  private readonly GRAVITY    = 2200;
+  private readonly JUMP_FORCE = -1080;
+  private readonly GROUND_Y   = 620;
 
-  constructor() {
-    this.container = new PIXI.Container();
-    this.width  = this._baseW * this._scale;
-    this.height = this._baseH * this._scale;
-  }
+  private squashTime = 0;
 
-  init(): void {
-    const base   = PIXI.Texture.from(characterPng);
-    const frames: PIXI.Texture[] = [];
+  public  invuln      = false;
+  private invulnTimer = 0;
+  private readonly INVULN_DURATION = 1.2;
 
-    for (let i = 0; i < Player.FRAME_COUNT; i++) {
-      frames.push(
-        new PIXI.Texture({
-          source: base.source,
-          frame:  new PIXI.Rectangle(
-            i * Player.FRAME_W,
-            0,
-            Player.FRAME_W,
-            Player.FRAME_H,
-          ),
-        }),
-      );
+  constructor() {}
+
+  // ─── init ────────────────────────────────────────────────────────────────
+  public async init(): Promise<void> {
+    const texture = await PIXI.Assets.load<PIXI.Texture>(characterPng);
+    const sheet   = new PIXI.Spritesheet(texture, atlas as any);
+    await sheet.parse();
+
+    // Сохраняем все анимации
+    for (const key of [ANIM_IDLE, ANIM_RUN, ANIM_JUMP]) {
+      this.allAnims[key] = sheet.animations[key] ?? [];
     }
 
-    this.sprite = new PIXI.AnimatedSprite(frames);
-    this.sprite.anchor.set(0.5, 0.5);
-    this.sprite.width  = this.width;
-    this.sprite.height = this.height;
-
-    // ~12 fps — плавная беговая анимация
-    this.sprite.animationSpeed = 6 / 60;
-    this.sprite.play();
-
-    this.baseSX = this.sprite.scale.x;
-    this.baseSY = this.sprite.scale.y;
+    // Обычный Sprite — нет никаких проблем с ticker
+    this.sprite = new PIXI.Sprite(this.allAnims[ANIM_IDLE][0]);
+    this.sprite.anchor.set(0.5, 0.96);
 
     this.container.addChild(this.sprite);
+    this.container.x = this.x;
+    this.container.y = this.y;
 
-    this.container.x = this.x + this.width  / 2;
-    this.container.y = this.y + this.height / 2;
-    this.container.rotation = 0;
+    // Стартуем с idle
+    this._playAnim(ANIM_IDLE, FPS_IDLE, true);
   }
 
-  unlockJump(): void { this.jumpLocked = false; }
-
-  jump(): void {
-    if (this.jumpLocked) return;
-    if (this.onGround) { this.vy = this.jumpForce; this.onGround = false; }
+  // ─── публичные методы ────────────────────────────────────────────────────
+  public startRunning(): void {
+    this.jumpLocked = true;
+    this._setState('run');
   }
 
-  takeDamage(): void {
+  public freeze(): void {
+    this._setState('idle');
+  }
+
+  public unlockJump(): void { this.jumpLocked = false; }
+  public lockJump():   void { this.jumpLocked = true;  }
+
+  public jump(): void {
+    if (!this.onGround || this.jumpLocked) return;
+    this.vy       = this.JUMP_FORCE;
+    this.onGround = false;
+    this._setState('jump');
+  }
+
+  public takeDamage(): void {
     if (this.invuln) return;
-    this.invuln = true; this.invulnTimer = this.invulnDur;
+    this.invuln      = true;
+    this.invulnTimer = this.INVULN_DURATION;
   }
 
-  canTakeDamage(): boolean { return !this.invuln; }
+  // ─── update ──────────────────────────────────────────────────────────────
+  public update(dt: number): void {
+    if (!this.sprite) return;
 
-  update(dt: number): void {
-    this.vy += this.gravity * dt;
-    this.y  += this.vy * dt;
-    if (this.y >= this.groundY) {
-      this.y = this.groundY; this.vy = 0; this.onGround = true;
+    // ── Ручная прокрутка кадров ──────────────────────────────────────────
+    if (this.framePlaying && this.textures.length > 1) {
+      this.frameTime += dt;
+      while (this.frameTime >= this.frameDur) {
+        this.frameTime -= this.frameDur;
+        if (this.frameLooping) {
+          this.frameIndex = (this.frameIndex + 1) % this.textures.length;
+        } else {
+          if (this.frameIndex < this.textures.length - 1) {
+            this.frameIndex++;
+          } else {
+            this.framePlaying = false; // анимация закончилась
+          }
+        }
+      }
+      this.sprite.texture = this.textures[this.frameIndex];
     }
 
-    // Анимация: бежит на земле, пауза в прыжке
-    if (this.onGround) {
-      this.runTime += dt;
-      if (!this.sprite.playing) this.sprite.play();
-    } else {
-      // В прыжке — фиксируем на втором кадре (фаза полёта)
-      if (this.sprite.playing) {
-        this.sprite.stop();
-        this.sprite.currentFrame = 1;
+    // ── Физика ───────────────────────────────────────────────────────────
+    if (this.currentState !== 'idle') {
+      this.vy += this.GRAVITY * dt;
+      this.y  += this.vy * dt;
+
+      if (this.y >= this.GROUND_Y) {
+        if (!this.onGround) this.squashTime = 0.12;
+        this.y        = this.GROUND_Y;
+        this.vy       = 0;
+        this.onGround = true;
+        if (this.currentState !== 'run') this._setState('run');
+      } else {
+        this.onGround = false;
+        if (this.vy > 0 && this.currentState !== 'fall') this._setState('fall');
       }
     }
 
+    // ── Squash & stretch ─────────────────────────────────────────────────
+    if (this.squashTime > 0) {
+      this.squashTime -= dt;
+      const p = Math.max(0, this.squashTime / 0.12);
+      this.sprite.scale.set(1 + p * 0.08, 1 - p * 0.12);
+    } else {
+      this.sprite.scale.set(1, 1);
+    }
+
+    // ── Мигание при неуязвимости ─────────────────────────────────────────
     if (this.invuln) {
       this.invulnTimer -= dt;
       if (this.invulnTimer <= 0) {
-        this.invuln = false; this.sprite.tint = 0xffffff; this.sprite.alpha = 1;
+        this.invuln       = false;
+        this.sprite.alpha = 1;
+        this.sprite.tint  = 0xffffff;
+      } else {
+        const flash       = Math.sin(performance.now() * 0.018) > 0;
+        this.sprite.tint  = flash ? 0xff8888 : 0xffffff;
+        this.sprite.alpha = flash ? 0.65 : 1;
       }
     }
 
-    // Bounce и tilt — только на земле
-    const s      = Math.sin(this.runTime * this.runSpd);
-    const bounce = this.onGround ? s * this.runAmp : 0;
-    const tilt   = this.onGround ? s * 0.05 : -0.15;
-    const squash = this.onGround ? 1 + s * 0.03 : 1.05;
+    this.container.x = this.x;
+    this.container.y = this.y;
+  }
 
-    this.container.x        = this.x + this.width  / 2;
-    this.container.y        = this.y + this.height / 2 + bounce;
-    this.container.rotation = tilt;
-    this.sprite.scale.x     = this.baseSX * squash;
-    this.sprite.scale.y     = this.baseSY / squash;
+  // ─── приватные ───────────────────────────────────────────────────────────
+  private _setState(state: 'idle' | 'run' | 'jump' | 'fall'): void {
+    if (this.currentState === state) return;
+    this.currentState = state;
 
-    if (this.invuln) {
-      const flash = Math.sin(performance.now() * 0.03) > 0;
-      this.sprite.tint  = flash ? 0xff4444 : 0xffffff;
-      this.sprite.alpha = flash ? 1.0 : 0.55;
+    switch (state) {
+      case 'idle': this._playAnim(ANIM_IDLE, FPS_IDLE, true);  break;
+      case 'run':  this._playAnim(ANIM_RUN,  FPS_RUN,  true);  break;
+      case 'jump': this._playAnim(ANIM_JUMP, FPS_JUMP, false); break;
+      case 'fall':
+        // Стоп на последнем кадре прыжка
+        this.textures     = this.allAnims[ANIM_JUMP];
+        this.frameIndex   = Math.max(0, this.textures.length - 1);
+        this.framePlaying = false;
+        if (this.textures.length) this.sprite.texture = this.textures[this.frameIndex];
+        break;
     }
+  }
+
+  private _playAnim(animName: string, fps: number, loop: boolean): void {
+    const frames = this.allAnims[animName];
+    if (!frames?.length) { console.warn(`[Player] "${animName}" не найдена`); return; }
+    this.textures      = frames;
+    this.frameIndex    = 0;
+    this.frameTime     = 0;
+    this.frameDur      = 1 / fps;
+    this.frameLooping  = loop;
+    this.framePlaying  = true;
+    this.sprite.texture = frames[0];
   }
 }

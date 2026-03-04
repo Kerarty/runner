@@ -3,9 +3,18 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
   plugins: [viteSingleFile()],
+  base: './',
   build: {
-    assetsInlineLimit: 100000000, // всё в один HTML
+    assetsInlineLimit: 100000000,
     chunkSizeWarningLimit: 5000,
+    rollupOptions: {
+      output: {
+        inlineDynamicImports: true,
+      },
+    },
   },
-  base: './', // важно для GitHub Pages
+  json: {
+    stringify: false,
+  },
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.json'],
 });
