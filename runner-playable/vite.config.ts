@@ -7,14 +7,14 @@ export default defineConfig({
   build: {
     assetsInlineLimit: 100000000,
     chunkSizeWarningLimit: 5000,
+    cssCodeSplit: false,
     rollupOptions: {
       output: {
-        inlineDynamicImports: true,
-      },
-    },
+        // inlineDynamicImports deprecated — используем codeSplitting: false
+        manualChunks: undefined,
+      }
+    }
   },
-  json: {
-    stringify: false,
-  },
-  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.json'],
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.mp3'],
+  // JSON как URL через ?url — не нужно в assetsInclude
 });

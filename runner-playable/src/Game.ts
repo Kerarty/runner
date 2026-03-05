@@ -7,7 +7,7 @@ import { Monster }    from './Monster';
 import { Obstacle }   from './Obstacle';
 
 import backgroundPng from './assets/background.png';
-import characterPng  from './assets/character1.png';
+import characterPng  from './assets/character.png';
 import moneyPng      from './assets/money.png';
 import healthPng     from './assets/health.png';
 import konusPng      from './assets/konus.png';
@@ -242,6 +242,7 @@ export class Game {
       this.state = 'playing';
       this.ui.hideHint();
       this._playMusic();
+      this.player.startRunning(); // ← запуск бега
     } else if (this.state === 'frozen') {
       this.state = 'playing';
       this.ui.hideHint();
@@ -427,6 +428,7 @@ export class Game {
       if (danger) {
         this.frozenTriggered = true;
         this.state = 'frozen';
+        this.player.freeze(); // ← стоп анимации бега
         this.ui.showHint('Tap the screen\nto jump!', 999);
         return;
       }
@@ -452,10 +454,11 @@ export class Game {
       if ('hitboxOffsetY' in e) hy += (e as any).hitboxOffsetY;
 
       const hesx = hx + this.worldContainer.x;
-      const px = this.player.x + this.player.width * 0.15;
-      const py = this.player.y + this.player.height * 0.20;
-      const pw = this.player.width * 0.70;
-      const ph = this.player.height * 0.60;
+      // anchor(0.5,1.0): player.y = уровень ног, хитбокс считаем снизу вверх
+      const pw = this.player.width  * 0.75;
+      const ph = this.player.height * 0.85;
+      const px = this.player.x - pw * 0.5;
+      const py = this.player.y - ph;
 
       if (px + pw > hesx && px < hesx + hw && py + ph > hy && py < hy + hh) {
         if (e instanceof Coin) {
