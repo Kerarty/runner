@@ -13,7 +13,7 @@ import healthPng     from './assets/health.png';
 import konusPng      from './assets/konus.png';
 import robberPng     from './assets/robber1.png';
 import paypalPng     from './assets/PayPal.png';
-import finishLinePng from './assets/finishline.png';
+import finishLinePng from './assets/Finishline.png';
 import bgMusicMp3    from './assets/background-music.mp3';
 import winMp3        from './assets/win.mp3';
 import loseMp3       from './assets/lose.mp3';
@@ -27,9 +27,9 @@ function mkText(t: string, s: Record<string, any>): PIXI.Text { return new PIXI.
 function eW(e: Entity) { return (e as any).spriteWidth  ?? (e as any).width  ?? 100; }
 function eH(e: Entity) { return (e as any).spriteHeight ?? (e as any).height ?? 100; }
 
-const COIN_Y_MIN = 460;
-const COIN_Y_MAX = 580;
-const GROUND_Y   = 774;
+const COIN_Y_MIN = 595;
+const COIN_Y_MAX = 655;
+const GROUND_Y   = 790;
 
 export class Game {
   private readonly app: PIXI.Application;
@@ -54,7 +54,8 @@ export class Game {
   private health     = 3;
   private distance   = 0;
   private finishX    = 6200;
-  private finishLine!: PIXI.TilingSprite;
+  private finishLine!:    PIXI.Container;
+  private finishLineTex!: PIXI.Texture;
 
   private lastDanger = -9999;
   private readonly CAM = 140;
@@ -107,6 +108,8 @@ export class Game {
     this.gameContainer    = new PIXI.Container();
     this.worldContainer   = new PIXI.Container();
     this.effectsContainer = new PIXI.Container();
+    // finishLine добавляется первой → под всеми остальными слоями
+    // (worldContainer, effectsContainer, player будут поверх)
     this.gameContainer.addChild(this.worldContainer, this.effectsContainer);
     this.app.stage.addChild(this.gameContainer);
     this.gameContainer.mask = this.clipMask;
@@ -140,16 +143,12 @@ export class Game {
 
     this._setupAudio();
 
-    // Финишная линия
-    const finishTex = await PIXI.Assets.load<PIXI.Texture>(finishLinePng);
-    const FLW = this.effectiveLW;
-    const FLH = 48;
-    this.finishLine = new PIXI.TilingSprite({ texture: finishTex, width: FLW + 200, height: FLH });
-    this.finishLine.tileScale.set(FLH / finishTex.height);
-    this.finishLine.y = GROUND_Y - FLH;
+    // Финишная линия — ворота + шахматная полоса на земле (как в референсе)
+    this.finishLineTex = await PIXI.Assets.load<PIXI.Texture>(finishLinePng);
+    this.finishLine = this._buildFinishLine();
+    // finishLine — как entity: стартует за экраном, двигает x сама в _update
     this.finishLine.x = this.finishX;
-    this.finishLine.visible = false;
-    this.worldContainer.addChild(this.finishLine);
+    this.gameContainer.addChildAt(this.finishLine, 0); // слой 0 = под всем
 
     this._spawnInitial();
     this._buildWinScreen();
@@ -214,9 +213,7 @@ export class Game {
 
     this.ui?.layout(sw, sh);
 
-    if (this.finishLine) {
-      this.finishLine.width = this.effectiveLW + 200;
-    }
+    // finishLine — статичный Container, ресайз не нужен
   }
 
   private _s2g(sx: number, sy: number) {
@@ -417,6 +414,8 @@ export class Game {
     this.distance += 280 * dt;
     this.bg.update(this.distance);
     this.worldContainer.x = this.CAM - this.distance;
+    // Финишная линия как entity — двигает x сама с той же скоростью
+    this.finishLine.x -= 280 * dt;
 
     // Frozen trigger
     if (!this.frozenTriggered) {
@@ -429,7 +428,7 @@ export class Game {
         this.frozenTriggered = true;
         this.state = 'frozen';
         this.player.freeze(); // ← стоп анимации бега
-        this.ui.showHint('Tap the screen\nto jump!', 999);
+        this.ui.showHint('Jump to avoid enemies', 999);
         return;
       }
     }
@@ -454,7 +453,7 @@ export class Game {
       if ('hitboxOffsetY' in e) hy += (e as any).hitboxOffsetY;
 
       const hesx = hx + this.worldContainer.x;
-      // anchor(0.5,1.0): player.y = уровень ног, хитбокс считаем снизу вверх
+      // anchor(0.5,1.0): player.y = ноги, хитбокс считаем вверх
       const pw = this.player.width  * 0.75;
       const ph = this.player.height * 0.85;
       const px = this.player.x - pw * 0.5;
@@ -497,12 +496,8 @@ export class Game {
       this._spawnPattern();
     }
 
-    // Показ финишной линии
-    if (!this.finishLine.visible && this.distance > this.finishX - 800) {
-      this.finishLine.visible = true;
-    }
-
-    if (this.distance > this.finishX) {
+    // Победа: финишная линия дошла до персонажа (x ~ CAM = 140)
+    if (this.finishLine.x <= this.CAM + 50) {
       this.state = 'win';
       this._stopMusic();
       this._playWin();
@@ -813,4 +808,31 @@ export class Game {
 
     return c;
   }
+  /** Финишная линия — картинка Finishline.png на всю ширину асфальта */
+  private _buildFinishLine(): PIXI.Container {
+    const c = new PIXI.Container();
+
+    // Асфальт занимает y=650..790 в логических координатах (GROUND_Y=790)
+    // Картинка уже нарисована в перспективе, просто растягиваем её на весь асфальт
+    const ROAD_TOP  = 660;              // верхний край асфальта
+    const ROAD_BOT  = 790;             // нижний край (GROUND_Y)
+    const ROAD_H    = ROAD_BOT - ROAD_TOP;  // = 140px
+
+    // Ширина = весь effectiveLW (может быть шире 640 на широких экранах)
+    // Берём с запасом — мировые координаты, не экранные
+    const ROAD_W    = 800;
+
+    const stripe = new PIXI.Sprite(this.finishLineTex);
+    stripe.x      = 0;
+    stripe.y      = ROAD_TOP;
+    stripe.width  = ROAD_W;
+    stripe.height = ROAD_H;
+    c.addChild(stripe);
+
+    return c;
+  }
+
+
+
+
 }

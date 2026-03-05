@@ -32,7 +32,7 @@ export class Player {
   private jumpLocked = true;
 
   private readonly G        = 2200;
-  private readonly JF       = -900;
+  private readonly JF       = -1100;  // увеличено: прыжок 275px — перелетает монстра (185px)
   private readonly GROUND_Y = 774;
 
   private squashTime = 0;
@@ -78,7 +78,7 @@ export class Player {
       this.container.addChild(anim);
     }
 
-    this.runAnim.animationSpeed  = 0.22;   // бег — быстро
+    this.runAnim.animationSpeed  = 0.15;   // бег — быстро
     this.idleAnim.animationSpeed = 0.08;   // idle — медленное покачивание
     this.jumpAnim.animationSpeed = 0.20;   // прыжок
     this.jumpAnim.loop = false;            // прыжок не зацикливаем

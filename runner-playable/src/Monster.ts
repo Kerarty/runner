@@ -4,16 +4,18 @@ export class Monster {
   public readonly sprite: PIXI.AnimatedSprite;
 
   public x: number;
-  public readonly y = 654;
 
-  public readonly spriteWidth  = 85;
-  public readonly spriteHeight = 120;
+  // Ноги монстра на том же уровне земли что и у игрока (GROUND_Y = 774)
+  public readonly spriteWidth  = 110;
+  public readonly spriteHeight = 185;
+  public readonly y = 774 - 185;  // = 589 — верх спрайта, ноги на 774
 
   public get width()  { return this.spriteWidth;  }
   public get height() { return this.spriteHeight; }
 
-  public readonly hitboxWidth    = 45;
-  public readonly hitboxHeight   = 70;
+  // Хитбокс чуть меньше спрайта
+  public readonly hitboxWidth    = 65;
+  public readonly hitboxHeight   = 155;
   public readonly hitboxOffsetX: number;
   public readonly hitboxOffsetY: number;
 
